@@ -1,0 +1,213 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>mnemosx brain dump 🌸🧠</title>
+  <link href="https://fonts.googleapis.com/css2?family=Shantell+Sans:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Shantell Sans', sans-serif;
+      background: linear-gradient(135deg, #ffdde1, #ee9ca7);
+      color: #333;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem;
+      overflow-x: hidden;
+    }
+    h1, h2 {
+      font-weight: 600;
+      color: #ff6fa1;
+      text-shadow: 2px 2px 0 #fff, 4px 4px 0 #ffc0cb;
+      animation: floatText 3s ease-in-out infinite;
+    }
+    @keyframes floatText {
+      0% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+      100% { transform: translateY(0); }
+    }
+    .hidden { display: none; }
+    .entry-box {
+      background: #fff6fa;
+      padding: 1rem;
+      border-radius: 20px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+      width: 100%;
+      max-width: 600px;
+      margin-top: 1rem;
+      position: relative;
+    }
+    textarea {
+      width: 100%;
+      height: 150px;
+      background: #fff;
+      color: #333;
+      border: 2px dashed #ffafd5;
+      padding: 1rem;
+      border-radius: 10px;
+      resize: none;
+      font-family: 'Shantell Sans', sans-serif;
+      font-size: 1rem;
+    }
+    button {
+      margin-top: 1rem;
+      padding: 0.5rem 1rem;
+      background: #ff6fa1;
+      border: none;
+      border-radius: 30px;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 2px 2px 0 #fff, 4px 4px 0 #ffb3c6;
+      transition: transform 0.2s;
+    }
+    button:hover {
+      background: #ff5191;
+      transform: scale(1.05);
+    }
+    .entry {
+      background: #fff;
+      padding: 1rem;
+      border: 2px dashed #ffafd5;
+      border-radius: 15px;
+      margin-top: 1rem;
+      font-size: 0.95rem;
+      position: relative;
+    }
+    input[type="password"], input[type="date"] {
+      padding: 0.5rem;
+      border-radius: 10px;
+      border: 2px solid #ffc0cb;
+      font-family: 'Shantell Sans', sans-serif;
+    }
+    .stickers, .chibi {
+      position: absolute;
+      animation: bounce 2s infinite;
+    }
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+    .stickers img, .chibi img {
+      width: 60px;
+    }
+    .entry-actions {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      display: flex;
+      gap: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>🧠 mnemosx brain dump 🌸</h1>
+
+  <div id="loginBox">
+    <p>🔐 Enter your diary password:</p>
+    <input type="password" id="passwordInput" />
+    <button onclick="checkPassword()">✨ Unlock ✨</button>
+  </div>
+
+  <div id="diaryApp" class="hidden">
+    <h2>Write a New Memory 💭</h2>
+    <div class="entry-box">
+      <div class="chibi"><img src="https://i.ibb.co/kx91zZd/chibi-girl.png" alt="Chibi Girl"></div>
+      <label for="entryDate">📅 Date:</label>
+      <input type="date" id="entryDate"><br>
+      <textarea id="newEntry" placeholder="Type your softest secrets..."></textarea>
+      <button onclick="saveEntry()">💾 Save Entry</button>
+    </div>
+    <h2>📚 Past Brain Dumps</h2>
+    <div id="entries"></div>
+  </div>
+
+  <audio id="clickSound" src="https://www.soundjay.com/buttons/sounds/button-3.mp3" preload="auto"></audio>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, updateDoc, serverTimestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDn1Csd9k-dxvDyopjgz9BZCSY6XhXzwzw",
+      authDomain: "reelnote-12cf3.firebaseapp.com",
+      projectId: "reelnote-12cf3",
+      storageBucket: "reelnote-12cf3.firebasestorage.app",
+      messagingSenderId: "1037592914753",
+      appId: "1:1037592914753:web:fac2d7b51574d6ef9b0fc0",
+      measurementId: "G-Y1Q29JSLP3"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const clickSound = document.getElementById("clickSound");
+    document.querySelectorAll('button').forEach(btn => {
+      btn.addEventListener('click', () => clickSound.play());
+    });
+
+    window.checkPassword = function () {
+      const input = document.getElementById("passwordInput").value;
+      const correctPassword = "minisafe";
+      if (input === correctPassword) {
+        document.getElementById("loginBox").classList.add("hidden");
+        document.getElementById("diaryApp").classList.remove("hidden");
+        loadEntries();
+      } else {
+        alert("Wrong password 🙃");
+      }
+    };
+
+    window.saveEntry = async function () {
+      const content = document.getElementById("newEntry").value.trim();
+      const date = document.getElementById("entryDate").value;
+      if (content === "") return;
+      await addDoc(collection(db, "diaryEntries"), {
+        text: content,
+        date: date,
+        createdAt: serverTimestamp()
+      });
+      document.getElementById("newEntry").value = "";
+      document.getElementById("entryDate").value = "";
+      loadEntries();
+    };
+
+    window.deleteEntry = async function (id) {
+      await deleteDoc(doc(db, "diaryEntries", id));
+      loadEntries();
+    };
+
+    window.editEntry = async function (id, oldText) {
+      const newText = prompt("Edit your entry:", oldText);
+      if (newText !== null && newText.trim() !== "") {
+        await updateDoc(doc(db, "diaryEntries", id), { text: newText });
+        loadEntries();
+      }
+    };
+
+    async function loadEntries() {
+      const q = query(collection(db, "diaryEntries"), orderBy("createdAt", "desc"));
+      const snapshot = await getDocs(q);
+      const entriesDiv = document.getElementById("entries");
+      entriesDiv.innerHTML = "";
+      snapshot.forEach(docSnap => {
+        const entry = docSnap.data();
+        const id = docSnap.id;
+        const div = document.createElement("div");
+        div.className = "entry";
+        const date = entry.date || entry.createdAt?.toDate().toLocaleDateString() || "Undated";
+        const time = entry.createdAt?.toDate().toLocaleTimeString() || "Just now";
+        div.innerHTML = `
+          <div class="entry-actions">
+            <button onclick="editEntry('${id}', \`${entry.text.replace(/`/g, '\`')}\`)">✏️</button>
+            <button onclick="deleteEntry('${id}')">🗑️</button>
+          </div>
+          <strong>${date}</strong><br/><small>${time}</small><p>${entry.text}</p>`;
+        entriesDiv.appendChild(div);
+      });
+    }
+  </script>
+</body>
+</html>
